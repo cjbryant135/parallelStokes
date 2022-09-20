@@ -2,28 +2,30 @@
 
 //definitions for the polarStokesGrid class
 
-//one-liners 
-void polarStokesGrid::setOmega(const double val) {omega=val;}
-void polarStokesGrid::setSORTol(const double val) {sortol=val;}
-void polarStokesGrid::setVRMin(const int j, const double val) {vRMin[j]=val;}
-void polarStokesGrid::setVRMax(const int j, const double val) {vRMax[j]=val;}
-void polarStokesGrid::setU(const int i, const int j, const double val) {flowData[uI(i,j)]=val;}
-void polarStokesGrid::setV(const int i, const int j, const double val) {flowData[vI(i,j)]=val;}
-void polarStokesGrid::setP(const int i, const int j, const double val) {flowData[pI(i,j)]=val;}
-void polarStokesGrid::setFR(const int i, const int j, const double val) {bodyRData[uI(i,j)]=val;}
-void polarStokesGrid::setFT(const int i, const int j, const double val) {bodyTData[vI(i,j)-vStart]=val;}
+//****one-liners****
+//--setters--
+void polarStokesGrid::setOmega(const double val) {omega=val;} //sets relaxation parameter 
+void polarStokesGrid::setSORTol(const double val) {sortol=val;} //sets tolerance for SOR solver
+void polarStokesGrid::setVRMin(const int j, const double val) {vRMin[j]=val;} //v-velocity data at r=rMin
+void polarStokesGrid::setVRMax(const int j, const double val) {vRMax[j]=val;} //v-velociy data at r=rMax
+void polarStokesGrid::setU(const int i, const int j, const double val) {flowData[uI(i,j)]=val;} //set u-velocity at any point
+void polarStokesGrid::setV(const int i, const int j, const double val) {flowData[vI(i,j)]=val;} //set v-velocity at any point 
+void polarStokesGrid::setP(const int i, const int j, const double val) {flowData[pI(i,j)]=val;} //set pressure data at any pount 
+void polarStokesGrid::setFR(const int i, const int j, const double val) {bodyRData[uI(i,j)]=val;} //set r body force
+void polarStokesGrid::setFT(const int i, const int j, const double val) {bodyTData[vI(i,j)-vStart]=val;} //set theta body force 
+void polarStokesGrid::turnOnVerbose() {verbose=true;}; //writes residual information during the solve 
 
-//data access 
-int polarStokesGrid::Nr() const {return mNr;}
+//--data access--
+//grid sizes 
+int polarStokesGrid::Nr() const {return mNr;} 
 int polarStokesGrid::Nt() const {return mNt;}
+//flow data and body forces 
 double polarStokesGrid::u(const int i, const int j) const {return flowData[uI(i,j)];}
 double polarStokesGrid::v(const int i, const int j) const {return flowData[vI(i,j)];}
 double polarStokesGrid::p(const int i, const int j) const {return flowData[pI(i,j)];}
 double polarStokesGrid::fr(const int i, const int j) const {return bodyRData[uI(i,j)];}
 double polarStokesGrid::ft(const int i, const int j) const {return bodyTData[vI(i,j)-vStart];}
-
-
-//grid point locations/indices
+//grid point physical locations
 double polarStokesGrid::rC(const int i) const {return mRMin+(i+0.5)*dr;}
 double polarStokesGrid::rF(const int i) const {return mRMin+i*dr;}
 double polarStokesGrid::tC(const int j) const {return (j+0.5)*dt;}
@@ -34,12 +36,13 @@ double polarStokesGrid::xVLoc(const int i, const int j) const {return rC(i)*cos(
 double polarStokesGrid::yVLoc(const int i, const int j) const {return rC(i)*sin(tF(j));}
 double polarStokesGrid::xPLoc(const int i, const int j) const {return rC(i)*cos(tC(j));}
 double polarStokesGrid::yPLoc(const int i, const int j) const {return rC(i)*sin(tC(j));}
-
+//grid point indices in flowdata array 
 int polarStokesGrid::uI(const int i, const int j) const {return i*(mNt-1)+j;}
 int polarStokesGrid::vI(const int i, const int j) const {return vStart+i*(mNt-1)+j;}
 int polarStokesGrid::pI(const int i, const int j) const {return pStart+i*(mNt-1)+j;}
 
-//constructor
+
+//****constructor****
 polarStokesGrid::polarStokesGrid(const int nr, const int nt, const double rMin, const double rMax) {
 	//set parameters
 	mNr = nr;
@@ -51,9 +54,9 @@ polarStokesGrid::polarStokesGrid(const int nr, const int nt, const double rMin, 
 	dr = (rMax-rMin)/(nr-1);
 	dt = 2.*M_PI/(nt-1);
 
-	//set default parameter values 
+	//set default numerical parameter values 
 	sortol = 1.e-6;
-	omega = 0.4;
+	omega = 1.8;
 	
 	//allocate data arrays
 	flowData = new double[mNr*(mNt-1)+(mNr-1)*(mNt-1)+(mNr-1)*(mNt-1)]();
@@ -67,9 +70,8 @@ polarStokesGrid::polarStokesGrid(const int nr, const int nt, const double rMin, 
 	vStart = mNr*(mNt-1);
 	pStart = vStart+(mNr-1)*(mNt-1);
 
-
+	verbose = false; 
 }
-
 
 //solver routines 
 void polarStokesGrid::makeResidualsHuge() {
@@ -89,23 +91,29 @@ bool polarStokesGrid::isConverged() {
 }
 
 int polarStokesGrid::solveMomSOR() {
+	if(verbose) cout << "==============================================================\n";
+	//storage 
 	int count = 0;
 	int i,j;
 	int jP, jM;
 	double here, west, east, nort, sout;
 	double tempRes;
-	//prefactors
+	//compute prefactors 
 	double drDt = dr/dt;
 	double dtDr = dt/dr;
-	makeResidualsHuge();
+	makeResidualsHuge(); //force us into the loop
 	while(!isConverged() && count < MAXITS) {
 		count++;
+		if(verbose && count%100==0) {
+			cout << "On iteration " << count << " uRes = " << maxURes << ", vRes = " << maxVRes << endl;
+		}
 		zeroOutResiduals();
 		//update r velocity
 		for(i=1; i<mNr-1; ++i) { //note: skip grid points at particle surface and r=rmax
 			for(j=0; j<mNt-1; ++j) {
 				jM = j-1;
 				jP = j+1;
+				//periodicity 
 				if(jM < 0) jM = mNt-2;
 				if(jP > mNt-2) jP = 0;
 				here = u(i,j);
@@ -132,13 +140,13 @@ int polarStokesGrid::solveMomSOR() {
 			for(j=0; j<mNt-1; ++j) {
 				jM = j-1;
 				jP = j+1;
+				//periodicity 
 				if(jM < 0) jM = mNt-2;
 				if(jP > mNt-2) jP = 0;
-
 				here = v(i,j);
 				nort = v(i,jP);
 				sout = v(i,jM);
-				//cases for i-1, i+1
+				//cases for inner/outer boundaries
 				if(i==0) {
 					west = 2.*vRMin[j] - here;
 				} else {
@@ -157,7 +165,7 @@ int polarStokesGrid::solveMomSOR() {
 							dr * dt * here/rC(i) - 
 							dr * (p(i,j)-p(i,jM)) - 
 							dr * dt * rC(i) * bodyTData[vI(i,j)-vStart];
-				
+				//update	
 				flowData[vI(i,j)] += omega*tempRes/(dr*dt/rC(i) + 2*(rC(i)*dtDr + drDt/rC(i)));
 				if( fabs(tempRes) > maxVRes ) maxVRes = fabs(tempRes);
 
@@ -165,6 +173,7 @@ int polarStokesGrid::solveMomSOR() {
 		}
 
 	}
+	if(verbose) cout << "==============================================================\n";
 	return count;	
 
 }

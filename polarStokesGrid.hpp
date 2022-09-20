@@ -69,7 +69,8 @@ class polarStokesGrid
 		int solveMomSOR();
 
 		void dumpFlowData(string uOut, string vOut, string pOut);
-		
+		void turnOnVerbose();
+
 		~polarStokesGrid(void);
 	private:
 		double* flowData;
@@ -87,6 +88,7 @@ class polarStokesGrid
 		double maxURes, maxVRes, maxPRes;
 
 		int uStart, vStart, pStart;
+		bool verbose;
 };
 
 

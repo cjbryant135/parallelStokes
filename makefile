@@ -13,3 +13,6 @@ main.o: main.cpp
 
 main_exe: main.o polarStokesGrid.o
 	$(CPP) -o main_exe main.o polarStokesGrid.o -lm $(CXXFLAGS) $(OPT)
+
+clean:
+	rm -r *_exe *.o *.out 

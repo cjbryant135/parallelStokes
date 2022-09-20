@@ -47,9 +47,11 @@ int main(int argc, char* argv[]) {
 	polarStokesGrid annulus(nr, nt, rP, rMax);
 
 	//set numerical parameters
-	annulus.setSORTol(1.e-8); //tolerance for the SOR solver
+	annulus.setSORTol(1.e-12); //tolerance for the SOR solver
 	annulus.setOmega(1.8); //relaxation parameter
-	
+	//optional - shows residual information during the solve
+	//annulus.turnOnVerbose();
+
 	//set boundary conditions
 	int i,j;
 	double rG, tG;
