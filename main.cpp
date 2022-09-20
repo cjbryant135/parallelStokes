@@ -12,9 +12,13 @@
  *			f_th = -8 sin(th)-cos(th) 
  *		
  *		Inputs:
- *
+ *			nr - number of grid points in r-direction 
+ *			nt - number of grid points in t-direction 
+ *			outDir - location to write data to e.g. "./" Assumes this directory already exists. 
+ *	
  *		Outputs:
- *
+ *			-Writes number of SOR iterations needed to the console. 
+ *			-Flow data written to "<outDir>u.out", "<outDir>v.out", "<outDir>p.out"
  */
 
 //includes
@@ -65,17 +69,17 @@ int main(int argc, char* argv[]) {
 	for(i=0; i<nr; ++i) {
 		for(j=0; j<nt-1; ++j) {
 			tG = annulus.tC(j);
-			annulus.setFR(i,j,8.*cos(tG)*cos(tG));
+			annulus.setFR(i,j,8.*cos(tG)-sin(tG));
 			if(i<nr-1) {
 				tG = annulus.tF(j);
-				annulus.setFT(i,j,-8.*sin(tG)*sin(tG));
+				annulus.setFT(i,j,-8.*sin(tG)-cos(tG));
 			}
 		}
 	}
 
 	//set the correct pressure
 	for(i=0; i<nr-1; ++i) {
-		for(j=0; j<nr-1; ++j) {
+		for(j=0; j<nt-1; ++j) {
 			rG = annulus.rC(i);
 			tG = annulus.tC(j);
 			annulus.setP(i,j,rG*sin(tG));	
