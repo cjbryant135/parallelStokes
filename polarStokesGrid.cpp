@@ -90,6 +90,11 @@ bool polarStokesGrid::isConverged() {
 	return maxURes < sortol && maxVRes < sortol && maxPRes < sortol;
 }
 
+/* stokes momentum equation solver: 
+ * Uses SOR to solve the momentum equation for a given body force and pressure field.
+ * -Boundary conditions stored in u(0,j) and u(nr-1,j) for u; in vRMin[j] and vRMax[j] for v
+ *	-Body forces stored in bodyRData and bodyTData for the r,theta velocity fields respectively
+ */
 int polarStokesGrid::solveMomSOR() {
 	if(verbose) cout << "==============================================================\n";
 	//storage 
